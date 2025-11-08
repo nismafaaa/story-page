@@ -1,6 +1,6 @@
 // CSS imports
 import '../styles/styles.css';
-
+import './utils/notification';
 import App from './pages/app';
 
 document.addEventListener('DOMContentLoaded', async () => {
