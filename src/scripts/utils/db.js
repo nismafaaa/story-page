@@ -4,54 +4,66 @@ const STORE_NAME = 'drafts';
 
 let dbInstance;
 
-/**
- * Open (and initialize if needed) IndexedDB
- */
 export function openDB() {
 	if (dbInstance) return Promise.resolve(dbInstance);
 
 	return new Promise((resolve, reject) => {
-		try {
-			const request = indexedDB.open(DB_NAME, DB_VERSION);
+		const tryOpen = (version) => {
+			try {
+				const request = indexedDB.open(DB_NAME, version);
 
-			request.onupgradeneeded = (event) => {
-				const db = event.target.result;
-				console.log('[IndexedDB] onupgradeneeded', DB_NAME, 'version', DB_VERSION);
-				if (!db.objectStoreNames.contains(STORE_NAME)) {
-					db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-					console.log(`[IndexedDB] Created object store: ${STORE_NAME}`);
-				}
-			};
-
-			request.onsuccess = (event) => {
-				dbInstance = event.target.result;
-				dbInstance.onversionchange = () => {
-					console.warn('[IndexedDB] DB version change detected, closing connection.');
-					dbInstance.close();
-					dbInstance = null;
+				request.onupgradeneeded = (event) => {
+					const db = event.target.result;
+					console.log('[IndexedDB] onupgradeneeded', DB_NAME, 'version', event.oldVersion, '->', db.version);
+					if (!db.objectStoreNames.contains(STORE_NAME)) {
+						db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+						console.log(`[IndexedDB] Created object store: ${STORE_NAME}`);
+					}
 				};
-				console.log('[IndexedDB] Opened DB:', DB_NAME);
-				resolve(dbInstance);
-			};
 
-			request.onerror = (event) => {
-				console.error('[IndexedDB] Failed to open DB:', event.target.error);
-				reject(event.target.error);
-			};
+				request.onsuccess = (event) => {
+					dbInstance = event.target.result;
+					dbInstance.onversionchange = () => {
+						console.warn('[IndexedDB] DB version change detected, closing connection.');
+						dbInstance.close();
+						dbInstance = null;
+					};
 
-			request.onblocked = () => {
-				console.warn('[IndexedDB] open() request is blocked. Close other tabs accessing this DB.');
-			};
-		} catch (err) {
-			console.error('[IndexedDB] openDB threw', err);
-			reject(err);
-		}
+					if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+						try {
+							const newVersion = dbInstance.version + 1;
+							dbInstance.close();
+							dbInstance = null;
+							tryOpen(newVersion);
+							return;
+						} catch (err) {
+							reject(err);
+							return;
+						}
+					}
+
+					console.log('[IndexedDB] Opened DB:', DB_NAME);
+					resolve(dbInstance);
+				};
+
+				request.onerror = (event) => {
+					console.error('[IndexedDB] Failed to open DB:', event.target.error);
+					reject(event.target.error);
+				};
+
+				request.onblocked = () => {
+					console.warn('[IndexedDB] open() request is blocked. Close other tabs accessing this DB.');
+				};
+			} catch (err) {
+				console.error('[IndexedDB] openDB threw', err);
+				reject(err);
+			}
+		};
+
+		tryOpen(DB_VERSION);
 	});
 }
 
-/**
- * Add a new draft object
- */
 export async function addDraft(data) {
 	const db = await openDB();
 	return new Promise((resolve, reject) => {
@@ -75,10 +87,33 @@ export async function addDraft(data) {
 	});
 }
 
-/**
- * Debug helper: add a quick test draft (useful from DevTools)
- * Usage in console: await window.addTestDraft('hello')
- */
+export async function addDrafts(records = []) {
+	if (!Array.isArray(records) || records.length === 0) return Promise.resolve(true);
+	const db = await openDB();
+	return new Promise((resolve, reject) => {
+		try {
+			const tx = db.transaction(STORE_NAME, 'readwrite');
+			const store = tx.objectStore(STORE_NAME);
+
+			for (const rec of records) {
+				store.add({ ...rec, createdAt: rec.createdAt || Date.now() });
+			}
+
+			tx.oncomplete = () => {
+				console.log('[IndexedDB] addDrafts complete, count:', records.length);
+				resolve(true);
+			};
+			tx.onerror = () => {
+				console.error('[IndexedDB] addDrafts tx error:', tx.error);
+				reject(tx.error);
+			};
+		} catch (err) {
+			console.error('[IndexedDB] addDrafts exception:', err);
+			reject(err);
+		}
+	});
+}
+
 export async function addTestDraft(text) {
   try {
     const id = await addDraft({ text });
@@ -90,9 +125,6 @@ export async function addTestDraft(text) {
   }
 }
 
-/**
- * Get all drafts
- */
 export async function getAllDrafts() {
 	const db = await openDB();
 	return new Promise((resolve, reject) => {
@@ -117,9 +149,6 @@ export async function getAllDrafts() {
 	});
 }
 
-/**
- * Delete a draft by id
- */
 export async function deleteDraft(id) {
 	const db = await openDB();
 	return new Promise((resolve, reject) => {
@@ -143,14 +172,5 @@ export async function deleteDraft(id) {
 	});
 }
 
-/**
- * Backward-compat alias to match existing imports:
- * sync.js imports `deleteNote` — map it to `deleteDraft` to stop warnings.
- */
 export const deleteNote = deleteDraft;
-
-/**
- * Backward-compat alias to match existing imports:
- * sync.js imports `getAllNotes` — map it to `getAllDrafts` to stop warnings.
- */
 export const getAllNotes = getAllDrafts;
