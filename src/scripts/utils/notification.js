@@ -26,7 +26,6 @@ function ensureSubscribeButton() {
 		btn = document.createElement('button');
 		btn.id = 'btn-subscribe';
 		btn.type = 'button';
-		// updated label (Title Case) and language per request
 		btn.textContent = 'Subscribe Cerita Baru';
 		// ensure visual parity with Push Test Lokal button
 		btn.classList.add('btn');
@@ -39,7 +38,6 @@ function ensureSubscribeButton() {
 
 async function refreshButtonState(btn) {
 	const subscribed = await isSubscribed();
-	// update labels to match requested wording / Title Case
 	btn.textContent = subscribed ? 'Unsubscribe Cerita Baru' : 'Subscribe Cerita Baru';
 	btn.dataset.subscribed = subscribed ? '1' : '0';
 }

@@ -1,38 +1,48 @@
-import '../../styles/styles.css';
 import routes from '../routes/routes.js';
-import { sleep } from '../utils/index.js';
 import swRegister from '../utils/sw-register.js';
 import { addDraft, getAllDrafts, deleteDraft } from '../utils/db.js';
-import { syncOfflineData } from '../utils/sync.js';
 
 class App {
   #content;
   #drawerButton;
   #navigationDrawer;
   #draftsCache = [];
+  #isRendering = false;
+  #logoutListenerAttached = false;
+  #lastAuthState = null;
 
   constructor({ content, drawerButton, navigationDrawer }) {
     this.#content = content;
     this.#drawerButton = drawerButton;
     this.#navigationDrawer = navigationDrawer;
 
+    // Set initial auth state WITHOUT calling updateAuthLinks
+    this.#lastAuthState = !!localStorage.getItem('token');
+
     this._setupDrawer();
     this._registerServiceWorker();
 
-    window.addEventListener('hashchange', () => this.renderPage());
+    window.addEventListener('hashchange', () => {
+      this.#navigationDrawer.classList.remove('open');
+      this.renderPage();
+    });
+    
     this.renderPage();
   }
 
   _setupDrawer() {
-    this.#drawerButton.addEventListener('click', () => {
+    this.#drawerButton.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.#navigationDrawer.classList.toggle('open');
     });
+    
     document.body.addEventListener('click', e => {
       if (!this.#navigationDrawer.contains(e.target) &&
           !this.#drawerButton.contains(e.target)) {
         this.#navigationDrawer.classList.remove('open');
       }
     });
+    
     this.#navigationDrawer.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', () => {
         this.#navigationDrawer.classList.remove('open');
@@ -41,21 +51,29 @@ class App {
   }
 
   _updateAuthLinks() {
+    const isLoggedIn = !!localStorage.getItem('token');
+    
+    if (this.#lastAuthState === isLoggedIn) return;
+    this.#lastAuthState = isLoggedIn;
+
     const loginLink = document.getElementById('nav-login');
+    const registerLink = document.getElementById('nav-register');
+    const addLink = document.getElementById('nav-add');
     const logoutLink = document.getElementById('nav-logout');
+    const logoutAnchor = document.getElementById('logout-link');
 
-    if (localStorage.getItem('token')) {
-      if (loginLink) loginLink.style.display = 'none';
-      if (logoutLink) logoutLink.style.display = 'inline-block';
-    } else {
-      if (loginLink) loginLink.style.display = 'inline-block';
-      if (logoutLink) logoutLink.style.display = 'none';
-    }
+    if (loginLink) loginLink.style.display = isLoggedIn ? 'none' : 'block';
+    if (registerLink) registerLink.style.display = isLoggedIn ? 'none' : 'block';
+    if (addLink) addLink.style.display = isLoggedIn ? 'block' : 'none';
+    if (logoutLink) logoutLink.style.display = isLoggedIn ? 'block' : 'none';
 
-    if (logoutLink) {
-      logoutLink.addEventListener('click', () => {
+    if (logoutAnchor && !this.#logoutListenerAttached) {
+      this.#logoutListenerAttached = true;
+      logoutAnchor.addEventListener('click', (e) => {
+        e.preventDefault();
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
+        this.#lastAuthState = null;
         this._updateAuthLinks();
         window.location.hash = '/login';
       });
@@ -65,9 +83,8 @@ class App {
   async _registerServiceWorker() {
     try {
       await swRegister();
-      console.log('✅ Service Worker registered');
     } catch (err) {
-      console.error('❌ Service Worker registration failed:', err);
+      console.error('SW registration failed:', err);
     }
   }
 
@@ -139,15 +156,12 @@ class App {
           });
 
           if (response.ok) {
-            console.log('Story berhasil dikirim ke server');
             await deleteDraft(draft.id);
             this.#draftsCache = await getAllDrafts();
             this._renderDrafts(searchInput?.value || '', sortAsc);
-          } else {
-            console.log('Gagal kirim ke server, tetap tersimpan offline');
           }
         } catch (err) {
-          console.log('Gagal sync ke server:', err);
+          console.log('Sync failed:', err);
         }
       }
 
@@ -169,36 +183,25 @@ class App {
   }
 
   async renderPage() {
+    if (this.#isRendering) return;
+    this.#isRendering = true;
+    
+    this.#navigationDrawer.classList.remove('open');
+    
     const url = window.location.hash.slice(1) || '/';
     const page = routes[url] || routes['/'];
 
-    const updatePage = async () => {
-      this.#content.innerHTML = await page.render();
-      if (page.afterRender) await page.afterRender();
+    this.#content.innerHTML = await page.render();
+    this._updateAuthLinks();
+    if (page.afterRender) await page.afterRender();
 
-      this._updateAuthLinks();
-
-      if (document.getElementById('note-form')) {
-        this.#draftsCache = await getAllDrafts();
-        await this._renderDrafts();
-        await this._setupDraftForm();
-      }
-    };
-
-    if (document.startViewTransition) {
-      document.startViewTransition(async () => {
-        await sleep(100);
-        await updatePage();
-      });
-    } else {
-      this.#content.classList.add('slide-out');
-      setTimeout(async () => {
-        await updatePage();
-        this.#content.classList.remove('slide-out');
-        this.#content.classList.add('slide-in');
-        setTimeout(() => this.#content.classList.remove('slide-in'), 300);
-      }, 200);
+    if (document.getElementById('note-form')) {
+      this.#draftsCache = await getAllDrafts();
+      await this._renderDrafts();
+      await this._setupDraftForm();
     }
+
+    this.#isRendering = false;
   }
 }
 

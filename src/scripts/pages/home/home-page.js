@@ -24,10 +24,8 @@ export default class HomePage {
     `;
   }
 
-  async afterRender() {
-    // request latest 15 stories
+  async afterRender() { 
     const stories = await this.storyModel.getStories(1, 15);
-
     const listContainer = document.getElementById('story-list');
 
     if (this.map) {
