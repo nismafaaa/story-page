@@ -1,90 +1,83 @@
-const VAPID_PUBLIC_KEY =
-  'BCCs2eonMI-6H2ctvFaWg-UYdDv387Vno_bzUzALpB442r2lCnsHmtrx8biyPi_E-1fSGABK_Qs_GlvPoJJqxbk';
+/* Safe SW + Push registration for dev/prod */
+let initialized = false;
 
-const swRegister = async () => {
-  // Pastikan browser mendukung Service Worker dan Push API
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn('❌ Browser tidak mendukung Service Worker atau Push API');
-    return;
-  }
-
-  try {
-    // Daftarkan Service Worker
-    const registration = await navigator.serviceWorker.register('/service-worker.js');
-    console.log('✅ Service Worker registered!', registration);
-
-    // Minta izin notifikasi
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('❌ Izin notifikasi tidak diberikan');
-      return;
-    }
-    console.log('✅ Notification permission granted');
-
-    // Buat subscription push
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-
-    console.log('✅ Push subscription berhasil dibuat:', subscription);
-
-    // --- Kirim subscription ke server Dicoding ---
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('⚠️ Tidak ada token login — belum bisa kirim ke server Dicoding');
-      return;
-    }
-
-    const { endpoint, keys } = subscription.toJSON();
-
-    const response = await fetch('https://story-api.dicoding.dev/v1/notifications/subscribe', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        endpoint,
-        keys: {
-          p256dh: keys.p256dh,
-          auth: keys.auth,
-        },
-      }),
-    });
-
-    const result = await response.json();
-    if (result.error) {
-      console.error('❌ Gagal subscribe ke server Dicoding:', result.message);
-    } else {
-      console.log('🎉 Berhasil subscribe ke server Dicoding:', result.message || result);
-    }
-  } catch (error) {
-    console.error('❌ Service Worker registration failed:', error);
-  }
-};
-
-// Helper untuk ubah Base64 ke Uint8Array
 function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return new Uint8Array([...rawData].map((c) => c.charCodeAt(0)));
+	// If you have a VAPID public key, set it here; otherwise we won't subscribe.
+	if (!base64String) return null;
+	const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+	const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+	const rawData = atob(base64);
+	const outputArray = new Uint8Array(rawData.length);
+	for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+	return outputArray;
 }
 
-// Fungsi untuk mematikan notifikasi
-export const disableNotifications = async () => {
-  const reg = await navigator.serviceWorker.getRegistration();
-  if (!reg || !reg.pushManager) return;
+async function registerSW() {
+	if (initialized) return;
+	initialized = true;
 
-  const subscription = await reg.pushManager.getSubscription();
-  if (subscription) {
-    await subscription.unsubscribe();
-    console.log('🔕 Notifications disabled');
-    alert('Notifikasi berhasil dimatikan.');
-  } else {
-    console.log('ℹ️ Tidak ada notifikasi aktif');
-  }
-};
+	if (!('serviceWorker' in navigator)) {
+		console.warn('❌ Service Worker not supported in this browser.');
+		return;
+	}
 
-export default swRegister;
+	try {
+		// Register SW at scope root. Ensure /service-worker.js is served by dev/prod server.
+		const reg = await navigator.serviceWorker.register('/service-worker.js');
+		// Wait for an active/ready controller before using PushManager.
+		const readyReg = await navigator.serviceWorker.ready;
+		console.log('✅ Service Worker ready', readyReg);
+
+		// Optional: Push subscription
+		if ('PushManager' in window) {
+			const permission = await Notification.requestPermission().catch(() => 'denied');
+			if (permission !== 'granted') {
+				console.warn('⚠️ Notification permission not granted; skipping push subscribe.');
+				return;
+			}
+
+			// If you have a VAPID key, put it here; else skip subscription quietly in dev.
+			const VAPID_PUBLIC_KEY = ''; // e.g. 'BExxxxxxxx'
+			const appServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+			if (!appServerKey) {
+				console.info('ℹ️ No VAPID key configured; skipping push subscription.');
+				return;
+			}
+
+			const sub = await reg.pushManager.subscribe({
+				userVisibleOnly: true,
+				applicationServerKey: appServerKey,
+			});
+			console.log('✅ Push subscribed:', sub);
+			// TODO: send `sub` to your backend if needed
+		}
+	} catch (err) {
+		console.error('❌ Service Worker registration failed:', err);
+	}
+}
+
+// Defer until full load to avoid race with dev server boot.
+if (typeof window !== 'undefined') {
+	window.addEventListener('load', () => {
+		registerSW();
+	});
+}
+
+export async function disableNotifications() {
+	if (!('serviceWorker' in navigator)) return false;
+	try {
+		const reg = await navigator.serviceWorker.getRegistration();
+		if (!reg || !reg.pushManager) return false;
+		const sub = await reg.pushManager.getSubscription();
+		if (!sub) return true; // already disabled
+		await sub.unsubscribe();
+		console.log('🔕 Push subscription removed');
+		return true;
+	} catch (err) {
+		console.warn('Failed to disable notifications:', err);
+		return false;
+	}
+}
+
+export default registerSW;

@@ -1,4 +1,4 @@
-import '../styles/styles.css';
+import '../../styles/styles.css';
 import routes from '../routes/routes.js';
 import { sleep } from '../utils/index.js';
 import swRegister from '../utils/sw-register.js';
@@ -143,15 +143,12 @@ class App {
       e.preventDefault();
       if (!input.value.trim()) return;
 
-      // Tambah draft ke IndexedDB
       const draft = { text: input.value, createdAt: Date.now() };
       await addDraft(draft);
 
-      // Update cache & render
       this.#draftsCache = await getAllDrafts();
       this._renderDrafts(searchInput?.value || '', sortAsc);
 
-      // Sync otomatis ke server kalau online
       if (navigator.onLine) {
         try {
           const token = localStorage.getItem('token') || '';
@@ -228,6 +225,19 @@ class App {
   }
 }
 
+const AppModule = {
+	init() {
+n
+	},
+	render() {
+		return ''; 
+	},
+	afterRender() {
+	},
+};
+
+export default AppModule;
+
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App({
     content: document.querySelector('#main-content'),
@@ -237,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   app.renderPage();
 
-  // Mock push lokal
   const header = document.querySelector('.main-header');
   if (header && !document.getElementById('btn-local-push')) {
     const btn = document.createElement('button');

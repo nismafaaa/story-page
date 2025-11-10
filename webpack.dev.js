@@ -1,28 +1,18 @@
 const path = require('path');
-const common = require('./webpack.common.js');
 const { merge } = require('webpack-merge');
+const common = require('./webpack.common.js');
+
+const desiredPort = process.env.PORT ? Number(process.env.PORT) : 'auto';
 
 module.exports = merge(common, {
-  mode: 'development',
-  module: {
-    rules: [
-      {
-        test: /\.css$/,
-        use: [
-          'style-loader',
-          'css-loader',
-        ],
-      },
-    ],
-  },
-  devServer: {
-    static: path.resolve(__dirname, 'dist'),
-    port: 9000,
-    client: {
-      overlay: {
-        errors: true,
-        warnings: true,
-      },
-    },
-  },
+	mode: 'development',
+	devtool: 'eval-source-map',
+	devServer: {
+		static: { directory: path.resolve(__dirname, 'dist') },
+		historyApiFallback: true,
+		hot: true,
+		port: desiredPort,
+		client: { overlay: true },
+		open: false,
+	},
 });

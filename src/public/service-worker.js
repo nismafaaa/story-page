@@ -8,7 +8,14 @@ const STATIC_ASSETS = [
   '/icons/icon-512x512.png',
 ];
 
-// Install SW & cache static assets
+self.addEventListener('install', (event) => {
+	self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+	event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('install', (event) => {
   console.log('🟢 [ServiceWorker] Installing...');
   event.waitUntil(
@@ -17,7 +24,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate SW & clean old caches
 self.addEventListener('activate', (event) => {
   console.log('🟣 [ServiceWorker] Activated');
   event.waitUntil(
@@ -30,7 +36,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch handler: offline-first
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -46,7 +51,6 @@ self.addEventListener('fetch', (event) => {
             });
           })
           .catch(() => {
-            // fallback ke index.html untuk SPA
             if (event.request.mode === 'navigate') {
               return caches.match('/index.html');
             }
@@ -56,7 +60,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Push Notification
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
   const title = data.title || 'Cerita Baru!';
@@ -68,7 +71,6 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
@@ -79,7 +81,6 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Mock push lokal (tanpa API)
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'push-mock') {
     const { title, body } = event.data.data;
