@@ -1,19 +1,18 @@
 const BASE_URL = 'https://story-api.dicoding.dev/v1';
 
 export default class StoryModel {
-  constructor(token) {
-    this.token = token || localStorage.getItem('token');
-    if (!this.token) console.warn('Token kosong, login dulu!');
+  constructor() {
   }
 
   async getStories(page = 1, size = 20) {
-    if (!this.token) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       console.error('Token belum tersedia. Login dulu sebelum fetch stories.');
       return [];
     }
     try {
       const response = await fetch(`${BASE_URL}/stories?location=1&page=${page}&size=${size}`, {
-        headers: { Authorization: `Bearer ${this.token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.error) {
@@ -28,13 +27,14 @@ export default class StoryModel {
   }
 
   async addStory(formData) {
-    if (!this.token) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       return { error: true, message: 'Token tidak ditemukan. Silakan login dulu.' };
     }
     try {
       const response = await fetch(`${BASE_URL}/stories`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.token}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
       return await response.json();

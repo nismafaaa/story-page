@@ -238,6 +238,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function testPushLocal() {
     try {
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        const p = await Notification.requestPermission().catch(() => 'denied');
+        if (p !== 'granted') {
+          alert('Izin notifikasi diperlukan untuk tes push lokal.');
+          return;
+        }
+      }
+
       const reg = await registerSW();
       if (!reg || !reg.active) {
         alert('Service Worker belum aktif.');
