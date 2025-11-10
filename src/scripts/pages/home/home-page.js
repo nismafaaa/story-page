@@ -28,22 +28,37 @@ export default class HomePage {
     const stories = await this.storyModel.getStories(1, 15);
     const listContainer = document.getElementById('story-list');
 
-    if (this.map) {
-      this.map.remove();
-      this.map = null;
+    const mapContainer = document.getElementById('home-map');
+    if (mapContainer) {
+      if (this.map && typeof this.map.remove === 'function') {
+        try {
+          this.map.remove();
+        } catch (err) {
+        }
+        this.map = null;
+      }
+      if (mapContainer._leaflet_id) {
+        try {
+          mapContainer._leaflet_id = null;
+          mapContainer.innerHTML = '';
+        } catch (err) {
+        }
+      }
     }
+
+    this.markers.forEach(marker => {
+      try { marker.remove(); } catch (e) {}
+    });
+    this.markers = [];
+    if (listContainer) listContainer.innerHTML = '';
 
     this.map = L.map('home-map').setView([-6.2, 106.816], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(this.map);
 
-    this.markers.forEach(marker => marker.remove());
-    this.markers = [];
-    listContainer.innerHTML = '';
-
     if (!stories.length) {
-      listContainer.innerHTML = '<li>Tidak ada story yang bisa ditampilkan.</li>';
+      if (listContainer) listContainer.innerHTML = '<li>Tidak ada story yang bisa ditampilkan.</li>';
       return;
     }
 

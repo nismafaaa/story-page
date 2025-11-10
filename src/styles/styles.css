@@ -49,47 +49,29 @@ header {
   color: #141e16;
 }
 
-.navigation-drawer {
-  min-height: 100vh;
-  width: 200px;
-  padding: 20px 10px;
-  background-color: var(--white);
-  position: fixed;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  box-shadow: 0 0 4px 2px #00000033;
-  transform: translateX(-100%);
-  transition: transform 350ms;
-  z-index: 9999;
-}
-
-.navigation-drawer.open {
-  transform: translateX(0);
-}
-
-.drawer-button {
-  padding: 8px;
-  border: none;
-  border-radius: 4px;
-  background-color: transparent;
-  font-weight: bold;
-  font-size: 28px;
-  color: #141e16;
-  cursor: pointer;
+/* Simplified navigation (no off-canvas drawer) */
+.navigation {
+  display: block;
 }
 
 .nav-list {
   list-style: none;
-
   display: flex;
-  flex-direction: column;
-  gap: 10px 20px;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-list li {
+  display: inline-block;
 }
 
 .nav-list li a {
   padding: 8px 12px;
   display: block;
-  color: var(--text-dark);
+  color: var(--white);
   border-radius: 6px;
   text-decoration: none;
   transition: background-color 0.3s ease;
@@ -131,16 +113,18 @@ header {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Write your styles more here */
-@media screen and (width > 1000px) {
-  .navigation-drawer {
+@media (min-width: 1000px) {
+  .js .navigation-drawer {
     min-height: auto;
     width: auto;
     padding: 0;
     background-color: transparent;
     position: static;
     box-shadow: none;
-    transform: translateX(0);
+    transform: none !important;
+    transition: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   .nav-list {
@@ -347,12 +331,10 @@ button:hover, .btn:hover {
   color: #555;
 }
 
-/* konten lama keluar */
 ::view-transition-old(root) {
   animation: vt-fade-out 0.25s ease-in forwards;
 }
 
-/* konten baru masuk */
 ::view-transition-new(root) {
   animation: vt-fade-in 0.25s ease-out forwards;
 }
@@ -375,7 +357,6 @@ button:hover, .btn:hover {
   view-transition-name: avatar;
 }
 
-/* Notes Section */
 #notes-section {
   margin-top: 2rem;
   padding: 1rem;
@@ -420,4 +401,22 @@ button:hover, .btn:hover {
 
 #btn-subscribe:hover {
   background-color: #1976d2;
+}
+
+header + header {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+#toggleNotification,
+.push-test-button,
+.push-test-local,
+button#pushTest,
+button.push-test {
+  display: none !important;
+  visibility: hidden !important;
 }

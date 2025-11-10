@@ -9,7 +9,6 @@
   <meta name="theme-color" content="#2196f3">
   <title>App</title>
 
-  <link rel="stylesheet" href="./styles/styles.css">
 </head>
 <body>
   <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
@@ -18,40 +17,32 @@
     <div class="main-header container">
       <a class="brand-name" href="#/">App</a>
 
-      <nav id="navigation-drawer" class="navigation-drawer">
+      <nav id="navigation" class="navigation">
         <ul id="nav-list" class="nav-list">
-          <li><a href="#/">Beranda</a></li>
-          <li><a href="#/about">About</a></li>
-          <li><a href="#/login">Login</a></li>
-          <li><a href="#/register">Register</a></li>
-          <li><a href="#/add">Tambah Story</a></li>
+          <li id="nav-home"><a href="#/">Beranda</a></li>
+          <li id="nav-about"><a href="#/about">About</a></li>
+          <li id="nav-login"><a href="#/login">Login</a></li>
+          <li id="nav-register"><a href="#/register">Register</a></li>
+          <li id="nav-add"><a href="#/add">Tambah Story</a></li>
+
+          <!-- New buttons -->
+          <li id="nav-subscribe">
+            <button id="btn-subscribe" class="btn" type="button">Subscribe ke Story Baru</button>
+          </li>
+          <li id="nav-push-test">
+            <button id="btn-push-test" class="btn" type="button">Tes Push Lokal</button>
+          </li>
+
+          <li id="nav-logout"><a id="logout-link" href="#/logout">Logout</a></li>
         </ul>
       </nav>
 
-      <button id="drawer-button" class="drawer-button">☰</button>
     </div>
   </header>
 
   <main id="main-content" class="main-content">
-    <h1>Push Notification</h1>
-    <button id="toggleNotification">Enable Notification</button>
-
-    <section id="notes-section">
-      <h2>Catatan</h2>
-
-      <div class="notes-controls">
-        <input id="search-note" placeholder="Cari catatan..." />
-        <button id="sort-note">Sort A-Z / Z-A</button>
-      </div>
-
-      <form id="note-form">
-        <input id="note-input" placeholder="Tulis catatan..." required />
-        <button type="submit">Tambah</button>
-      </form>
-
-      <ul id="note-list"></ul>
-    </section>
   </main>
+
   <script src="app.bundle.js"></script>
 
 </body>

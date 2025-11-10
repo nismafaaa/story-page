@@ -15,15 +15,19 @@ class App {
     this.#content = content;
     this.#drawerButton = drawerButton;
     this.#navigationDrawer = navigationDrawer;
-
-    // Set initial auth state WITHOUT calling updateAuthLinks
     this.#lastAuthState = !!localStorage.getItem('token');
+    if (this.#drawerButton && this.#navigationDrawer) {
+      this._setupDrawer();
+    }
 
-    this._setupDrawer();
     this._registerServiceWorker();
-
     window.addEventListener('hashchange', () => {
-      this.#navigationDrawer.classList.remove('open');
+      if (this.#navigationDrawer && this.#navigationDrawer.classList) {
+        try {
+          this.#navigationDrawer.classList.remove('open');
+        } catch (err) {
+        }
+      }
       this.renderPage();
     });
     
@@ -31,6 +35,8 @@ class App {
   }
 
   _setupDrawer() {
+    if (!this.#drawerButton || !this.#navigationDrawer) return;
+
     this.#drawerButton.addEventListener('click', (e) => {
       e.stopPropagation();
       this.#navigationDrawer.classList.toggle('open');
@@ -186,7 +192,12 @@ class App {
     if (this.#isRendering) return;
     this.#isRendering = true;
     
-    this.#navigationDrawer.classList.remove('open');
+    if (this.#navigationDrawer && this.#navigationDrawer.classList) {
+      try {
+        this.#navigationDrawer.classList.remove('open');
+      } catch (err) {
+      }
+    }
     
     const url = window.location.hash.slice(1) || '/';
     const page = routes[url] || routes['/'];
