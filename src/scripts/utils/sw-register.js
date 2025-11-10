@@ -80,4 +80,15 @@ export async function disableNotifications() {
 	}
 }
 
+export async function getSubscription() {
+	if (!('serviceWorker' in navigator)) return null;
+	try {
+		const reg = await navigator.serviceWorker.getRegistration();
+		if (!reg || !reg.pushManager) return null;
+		return await reg.pushManager.getSubscription();
+	} catch {
+		return null;
+	}
+}
+
 export default registerSW;

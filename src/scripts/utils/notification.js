@@ -1,37 +1,74 @@
-import swRegister, { disableNotifications } from './sw-register.js';
+import registerSW, { disableNotifications } from './sw-register';
 
-const toggleBtn = document.getElementById('toggleNotification');
-let enabled = false;
+// Helper: check current push subscription status
+async function isSubscribed() {
+	try {
+		if (!('serviceWorker' in navigator)) return false;
+		const reg = await navigator.serviceWorker.getRegistration();
+		if (!reg || !reg.pushManager) return false;
+		const sub = await reg.pushManager.getSubscription();
+		return !!sub;
+	} catch {
+		return false;
+	}
+}
 
-const updateButton = () => {
-  toggleBtn.textContent = enabled ? 'Disable Notification' : 'Enable Notification';
-};
+// Helper: try to subscribe (no-op if VAPID key not configured in sw-register.js)
+async function subscribeIfPossible() {
+	await registerSW(); // ensures SW is ready; will subscribe only if VAPID is configured
+	return isSubscribed();
+}
 
-toggleBtn.addEventListener('click', async () => {
-  toggleBtn.disabled = true;
+function ensureSubscribeButton() {
+	const header = document.querySelector('.main-header');
+	if (!header) return null;
 
-  if (!enabled) {
-    await swRegister(); // registrasi SW + subscribe push
-    enabled = true;
-  } else {
-    await disableNotifications(); // unsubscribe push
-    enabled = false;
-  }
+	let btn = document.getElementById('btn-subscribe');
+	if (!btn) {
+		btn = document.createElement('button');
+		btn.id = 'btn-subscribe';
+		btn.type = 'button';
+		btn.textContent = 'Subscribe to notifications';
+		btn.style.display = 'inline-block'; // make sure it shows
+		btn.style.marginLeft = '10px';
+		header.appendChild(btn);
+	}
+	return btn;
+}
 
-  updateButton();
-  toggleBtn.disabled = false;
-});
+async function refreshButtonState(btn) {
+	const subscribed = await isSubscribed();
+	btn.textContent = subscribed ? 'Unsubscribe notifications' : 'Subscribe to notifications';
+	btn.dataset.subscribed = subscribed ? '1' : '0';
+}
 
-// Cek status subscription saat load
-(async () => {
-  toggleBtn.disabled = true;
-  if ('serviceWorker' in navigator && 'PushManager' in window) {
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (reg) {
-      const sub = await reg.pushManager.getSubscription();
-      enabled = !!sub;
-    }
-  }
-  updateButton();
-  toggleBtn.disabled = false;
-})();
+async function onToggleClick(e) {
+	const btn = e.currentTarget;
+	const subscribed = btn.dataset.subscribed === '1';
+
+	if (subscribed) {
+		await disableNotifications();
+	} else {
+		// ask permission if needed; registerSW() handles permission + SW readiness
+		await subscribeIfPossible();
+	}
+	await refreshButtonState(btn);
+}
+
+export async function initNotificationUI() {
+	const btn = ensureSubscribeButton();
+	if (!btn) return;
+
+	// avoid attaching multiple listeners
+	btn.removeEventListener('click', onToggleClick);
+	btn.addEventListener('click', onToggleClick);
+
+	await refreshButtonState(btn);
+}
+
+// Auto-init on DOM ready (keeps it idempotent)
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', () => initNotificationUI());
+} else {
+	initNotificationUI();
+}

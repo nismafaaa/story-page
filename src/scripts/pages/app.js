@@ -236,7 +236,8 @@ n
 	},
 };
 
-export default AppModule;
+export { App };
+export default App;
 
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App({
