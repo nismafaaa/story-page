@@ -1,6 +1,7 @@
-import { getAllNotes, addNote, deleteNote } from './db.js';
+import { getAllNotes, deleteNote } from './db.js';
+import CONFIG from '../config.js';
 
-const API_URL = 'https://your-api.com/notes';
+const API_URL = `${CONFIG.BASE_URL}/stories`;
 
 export async function syncOfflineData() {
   if (!navigator.onLine) return;
@@ -9,13 +10,22 @@ export async function syncOfflineData() {
 
   for (const note of offlineNotes) {
     try {
-      await fetch(API_URL, {
+      const token = localStorage.getItem('token') || '';
+
+      const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ title: note.text, description: note.text }),
       });
 
-      await deleteNote(note.id);
+      if (response.ok) {
+        await deleteNote(note.id);
+      } else {
+        console.warn('Sync failed for note id', note.id, 'status', response.status);
+      }
     } catch (err) {
       console.error('Gagal sinkronisasi:', err);
     }

@@ -202,45 +202,4 @@ class App {
   }
 }
 
-const AppModule = {
-	init() {
-n
-	},
-	render() {
-		return ''; 
-	},
-	afterRender() {
-	},
-};
-
-export { App };
 export default App;
-
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new App({
-    content: document.querySelector('#main-content'),
-    drawerButton: document.querySelector('#drawer-button'),
-    navigationDrawer: document.querySelector('#navigation-drawer'),
-  });
-
-  app.renderPage();
-
-  const header = document.querySelector('.main-header');
-  if (header && !document.getElementById('btn-local-push')) {
-    const btn = document.createElement('button');
-    btn.id = 'btn-local-push';
-    btn.textContent = 'Push Test Lokal';
-    btn.style.marginLeft = '10px';
-    header.appendChild(btn);
-
-    btn.addEventListener('click', () => {
-      if (Notification.permission === 'granted') {
-        new Notification('Cerita baru!', { body: 'Push test dari localhost' });
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(p => {
-          if (p === 'granted') new Notification('Cerita baru!', { body: 'Push test dari localhost' });
-        });
-      }
-    });
-  }
-});

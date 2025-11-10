@@ -3,6 +3,7 @@ const { merge } = require('webpack-merge');
 const common = require('./webpack.common.js');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = merge(common, {
 	mode: 'production',
@@ -22,5 +23,12 @@ module.exports = merge(common, {
 	plugins: [
 		new CleanWebpackPlugin(),
 		new MiniCssExtractPlugin({ filename: 'app.[contenthash].css' }),
+		// copy static public files into docs for production (manifest, service-worker, icons, etc.)
+		new CopyWebpackPlugin({
+			patterns: [
+				{ from: path.resolve(__dirname, 'src/public'), to: path.resolve(__dirname, 'docs') },
+				{ from: path.resolve(__dirname, 'src/styles'), to: path.resolve(__dirname, 'docs/styles') },
+			],
+		}),
 	],
 });

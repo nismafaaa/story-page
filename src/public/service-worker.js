@@ -2,38 +2,41 @@ const CACHE_NAME = 'story-app-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/app.bundle.js',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
 ];
 
 self.addEventListener('install', (event) => {
-	self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-	event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('install', (event) => {
   console.log('🟢 [ServiceWorker] Installing...');
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    self.skipWaiting();
+    const cache = await caches.open(CACHE_NAME);
+    const results = [];
+    for (const asset of STATIC_ASSETS) {
+      try {
+        // try fetching each asset; some assets may not exist in dev mode (hashed bundles, etc.)
+        const res = await fetch(asset, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+        await cache.put(asset, res.clone());
+        results.push({ asset, status: 'cached' });
+      } catch (err) {
+        // don't fail the whole install when a single resource is missing
+        console.warn(`🔶 [ServiceWorker] Failed to cache ${asset}:`, err.message || err);
+        results.push({ asset, status: 'failed', reason: err.message || String(err) });
+      }
+    }
+    console.log('🟢 [ServiceWorker] Cache install result:', results);
+  })());
 });
 
 self.addEventListener('activate', (event) => {
   console.log('🟣 [ServiceWorker] Activated');
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((key) => key !== CACHE_NAME && caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())));
+    self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -41,21 +44,25 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request)
-          .then((networkResponse) => {
-            return caches.open(CACHE_NAME).then((cache) => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request)
+        .then((networkResponse) => {
+          // Cache successful GET responses for future usage (best-effort)
+          return caches.open(CACHE_NAME).then((cache) => {
+            try {
               cache.put(event.request, networkResponse.clone());
-              return networkResponse;
-            });
-          })
-          .catch(() => {
-            if (event.request.mode === 'navigate') {
-              return caches.match('/index.html');
+            } catch (err) {
+              // some requests (opaque/cors) may fail to be put into cache — ignore
+              console.warn('[ServiceWorker] cache.put failed:', err);
             }
-          })
-      );
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
     })
   );
 });
@@ -67,16 +74,30 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Ada cerita baru yang menunggumu!',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
+    data: data, // include payload for notificationclick
+    actions: [
+      { action: 'open', title: 'Buka Cerita' }
+    ],
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const payload = event.notification.data || {};
+  const targetUrl = payload.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) clientList[0].focus();
-      else clients.openWindow('/');
+      if (clientList.length > 0) {
+        // focus the first client and navigate it if possible
+        const client = clientList[0];
+        client.focus();
+        if (client.url !== targetUrl && client.navigate) {
+          return client.navigate(targetUrl);
+        }
+        return;
+      }
+      return clients.openWindow(targetUrl);
     })
   );
 });
