@@ -25,7 +25,9 @@ export default class HomePage {
   }
 
   async afterRender() {
-    const stories = await this.storyModel.getStories(1, 3); 
+    // request latest 15 stories
+    const stories = await this.storyModel.getStories(1, 15);
+
     const listContainer = document.getElementById('story-list');
 
     if (this.map) {

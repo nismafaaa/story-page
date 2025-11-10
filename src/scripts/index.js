@@ -102,8 +102,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (header && !document.getElementById('btn-subscribe')) {
     const btn = document.createElement('button');
     btn.id = 'btn-subscribe';
+    // keep text consistent with notification module
     btn.textContent = 'Subscribe Cerita Baru';
     btn.style.marginLeft = '10px';
+    // ensure same styling as Push Test Lokal
+    btn.classList.add('btn');
     header.appendChild(btn);
   }
 
