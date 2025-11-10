@@ -17,7 +17,6 @@ class App {
     this.#navigationDrawer = navigationDrawer;
 
     this._setupDrawer();
-    this._setupInstallPrompt();
     this._registerServiceWorker();
 
     window.addEventListener('hashchange', () => this.renderPage());
@@ -70,28 +69,6 @@ class App {
     } catch (err) {
       console.error('❌ Service Worker registration failed:', err);
     }
-  }
-
-  _setupInstallPrompt() {
-    let deferredPrompt;
-    const installBtn = document.getElementById('installBtn');
-
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (installBtn) {
-        installBtn.style.display = 'block';
-        installBtn.addEventListener('click', async () => {
-          installBtn.style.display = 'none';
-          deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
-          console.log('User choice:', outcome);
-          deferredPrompt = null;
-        });
-      }
-    });
-
-    window.addEventListener('appinstalled', () => console.log('🎉 App installed!'));
   }
 
   async _renderDrafts(filterText = '', sortAsc = true) {

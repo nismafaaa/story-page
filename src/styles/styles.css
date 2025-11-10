@@ -371,17 +371,6 @@ button:hover, .btn:hover {
   view-transition-name: avatar;
 }
 
-
-
-/* Tombol install */
-.install-btn {
-  display: none;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 999;
-}
-
 /* Notes Section */
 #notes-section {
   margin-top: 2rem;
